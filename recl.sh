@@ -60,8 +60,8 @@ until $sign; do
 done
 
 UUID=$(cat /proc/sys/kernel/random/uuid)
-read -rp "请输入回落域名[默认: www.tslines.com]: " dest_server
-[[ -z $dest_server ]] && dest_server="www.tslines.com"
+read -rp "请输入回落域名[默认: www.cnd-ag.ch]: " dest_server
+[[ -z $dest_server ]] && dest_server="www.cnd-ag.ch"
 short_id=$(dd bs=4 count=2 if=/dev/urandom | xxd -p -c 8)
 keys=$(/root/Xray/xray x25519)
 private_key=$(echo $keys | awk -F " " '{print $3}')
