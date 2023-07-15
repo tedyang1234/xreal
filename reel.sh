@@ -18,7 +18,7 @@ if [[ -f "/root/Xray/xray" ]]; then
     green "xray文件已存在！"
 else
     echo "开始下载xray文件..."
-    wget https://github.com/XTLS/Xray-core/releases/download/v1.8.1/Xray-linux-32.zip
+    wget https://github.com/XTLS/Xray-core/releases/download/v1.8.3/Xray-linux-32.zip
     cd /root
     mkdir ./Xray
     unzip -d /root/Xray Xray-linux-32.zip
@@ -60,8 +60,8 @@ until $sign; do
 done
 
 UUID=$(cat /proc/sys/kernel/random/uuid)
-read -rp "请输入回落域名[默认: www.microsoft.com]: " dest_server
-[[ -z $dest_server ]] && dest_server="www.microsoft.com"
+read -rp "请输入回落域名[默认: www.cnd-ag.ch]: " dest_server
+[[ -z $dest_server ]] && dest_server="www.cnd-ag.ch"
 short_id=$(dd bs=4 count=2 if=/dev/urandom | xxd -p -c 8)
 keys=$(/root/Xray/xray x25519)
 private_key=$(echo $keys | awk -F " " '{print $3}')
