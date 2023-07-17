@@ -113,7 +113,8 @@ cat << EOF > /root/Xray/config.json
         "settings": {
             "method": "aes-128-gcm",
             "password": "uuuiii333",
-        }
+             "level": 1,
+        },
   ],
   "outbounds": [
       {
