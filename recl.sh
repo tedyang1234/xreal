@@ -115,7 +115,7 @@ cat << EOF > /root/Xray/config.json
             "password": "uuuiii333",
             "level": 1
         }
-    },
+    }
   ],
   "outbounds": [
       {
