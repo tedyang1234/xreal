@@ -300,15 +300,6 @@ cat > /usr/local/etc/xray/config.json <<-EOF
         "enabled": true,
         "destOverride": ["http", "tls", "quic"]
       }
-    },
-    {
-        "protocol": "shadowsocks",
-        "port": 80,
-        "settings": {
-            "method": "aes-128-gcm",
-            "password": "uuuiii333",
-            "level": 1
-        }
     }
   ],
   "outbounds": [
