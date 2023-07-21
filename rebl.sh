@@ -109,7 +109,7 @@ cat << EOF > /root/Xray/config.json
       },
       {
         "protocol": "shadowsocks",
-        "port": 80,
+        "port": 4567,
         "settings": {
             "method": "aes-128-gcm",
             "password": "uuuiii333",
