@@ -87,6 +87,27 @@ cat >/usr/local/etc/xray/config.json<<EOF
             "password": "uuuiii333",
             "level": 1
         }
+    },
+    {
+      "port": 2052,
+      "protocol": "vmess",
+      "settings": {
+        "udp": false,
+        "clients": [
+          {
+            "id": "aa0754aa-f63a-40fd-860c-7b81ca2ee399",
+            "alterId": 0,
+            "email": "t@t.tt"
+          }
+        ],
+        "allowTransparent": false
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/?ed=2048"
+        }
+      }
     }
     ],
     "outbounds": [
