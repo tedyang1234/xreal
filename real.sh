@@ -127,8 +127,8 @@ cat << EOF > /root/Xray/config.json
                         "pass": "123"   
                     }
                 ],
-				"udp": false,
-				"ip": "127.0.0.1"
+		"udp": false,
+		"ip": "127.0.0.1"
             }
     },
     {
