@@ -117,6 +117,21 @@ cat << EOF > /root/Xray/config.json
         }
     },
     {
+            "port":8080,
+            "protocol":"socks",
+            "settings":{
+                "auth":"password",
+                "accounts":[
+                    {
+                        "user": "321",        
+                        "pass": "123"   
+                    }
+                ],
+				"udp": false,
+				"ip": "127.0.0.1"
+            }
+    },
+    {
       "port": 2052,
       "protocol": "vmess",
       "settings": {
