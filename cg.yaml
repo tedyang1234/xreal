@@ -31,20 +31,7 @@ dns:
     geoip: true
     geoip-code: CN
     ipcidr:
-      - 240.0.0.0/4   
-      
-#==============================（hysteria2自签节点）
-- name: hysteria2-sg                            #可自定义名称
-  type: hysteria2                                      
-  server: 2403:cfc0:1114:a2:e1::e74a                                     #服务器本地IP
-  port: 1151                                         #自定义的端口，不支持多端口
-  password: 019513dc-7a90-4c36-9e27-4a2145fb5cb5                                    #自定义的密码
-  alpn:
-    - h3
-  sni: www.bing.com                                    #自签证书
-  skip-cert-verify: true
-  fast-open: true
-  
+      - 240.0.0.0/4       
 #==============================（tuic-V5证书节点）
 - name: tuic-jp                              #可自定义名称
   server: 2a12:bec0:166:10::                          #解析的域名或IP
@@ -57,7 +44,7 @@ dns:
   reduce-rtt: true
   udp-relay-mode: native
   congestion-controller: bbr
-  sni: www.bing.com                            #sni域名，与上面server地址一致     
+  sni:                             #sni域名，与上面server地址一致     
   skip-cert-verify: true
 
 
@@ -73,7 +60,7 @@ dns:
   reduce-rtt: true
   udp-relay-mode: native
   congestion-controller: bbr
-  sni: www.bing.com                                 #自签证书   
+  sni:                                 #自签证书   
   skip-cert-verify: true
   
 #（三区）==============================（代理分流）
@@ -85,7 +72,6 @@ proxy-groups:
   interval: 300
   strategy: round-robin
   proxies:
-    - hysteria2-sg                                  #自定义添加协议的name字段
     - tuic-jp
     - tuic-sg
 
@@ -94,8 +80,7 @@ proxy-groups:
   url: https://cp.cloudflare.com/generate_204
   interval: 300
   tolerance: 50
-  proxies:
-    - hysteria2-sg                                  #自定义添加协议的name字段
+  proxies:                         
     - tuic-jp
     - tuic-sg
     
@@ -105,7 +90,6 @@ proxy-groups:
     - 负载均衡                                            #自定义添加协议的name字段
     - 自动选择
     - DIRECT
-    - hysteria2-sg                                  #自定义添加协议的name字段
     - tuic-jp
     - tuic-sg
 
