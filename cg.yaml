@@ -31,84 +31,43 @@ dns:
     geoip: true
     geoip-code: CN
     ipcidr:
-      - 240.0.0.0/4    
-#==============================（hysteria1证书节点）
-- name: hysteria1证书节点                            #可自定义名称
-  type: hysteria
-  server: yg.ygkkk.eu.org                          #解析的域名
-  port: 12345                                      #自定义的端口，多端口改为 ports:空格1000,2000-3000
-  auth-str: 123456                                 #自定义的密码
-  alpn:
-    - h3
-  protocol: udp                                    #自定义协议：udp/wechat-video/faketcp
-  up: 20                                           #自定义的上传限制
-  down: 100                                        #自定义的下载限制
-  sni: yg.ygkkk.eu.org                             #sni域名，与上面server地址一致  
-  skip-cert-verify: false
-  fast-open: true
-    
-#==============================（hysteria1自签节点）
-- name: hysteria1自签节点                           #可自定义名称
-  type: hysteria
-  server: 1.2.3.4                                  #服务器本地IP
-  port: 12345                                      #自定义的端口，多端口改为 ports:空格1000,2000-3000
-  auth-str: 123456                                 #自定义的密码
-  alpn:
-    - h3
-  protocol: udp                                    #自定义协议：udp/wechat-video/faketcp
-  up: 20                                           #自定义的上传限制
-  down: 100                                        #自定义的下载限制
-  sni: www.bing.com                                #自签证书                     
-  skip-cert-verify: true
-  fast-open: true
-
-#==============================（hysteria2证书节点）
-- name: hysteria2证书节点                            #可自定义名称
-  type: hysteria2 
-  server: yg.ygkkk.eu.org                            #解析的域名
-  port: 12345                                        #自定义的端口，不支持多端口
-  password: 123456                                   #自定义的密码
-  alpn:
-    - h3
-  sni: yg.ygkkk.eu.org                               #sni域名，与上面server地址一致 
-  skip-cert-verify: false
-  fast-open: true
-
+      - 240.0.0.0/4   
+      
 #==============================（hysteria2自签节点）
-- name: hysteria2自签节点                             #可自定义名称
+- name: hysteria2-sg                            #可自定义名称
   type: hysteria2                                      
-  server: 1.2.3.4                                     #服务器本地IP
-  port: 12345                                         #自定义的端口，不支持多端口
-  password: 123456                                    #自定义的密码
+  server: 2403:cfc0:1114:a2:e1::e74a                                     #服务器本地IP
+  port: 1151                                         #自定义的端口，不支持多端口
+  password: 019513dc-7a90-4c36-9e27-4a2145fb5cb5                                    #自定义的密码
   alpn:
     - h3
   sni: www.bing.com                                    #自签证书
   skip-cert-verify: true
   fast-open: true
-    
+  
 #==============================（tuic-V5证书节点）
-- name: tuic-V5证书节点                              #可自定义名称
-  server: yg.ygkkk.eu.org                          #解析的域名或IP
-  port: 12345                                      #自定义的端口
+- name: tuic-jp                              #可自定义名称
+  server: 2a12:bec0:166:10::                          #解析的域名或IP
+  port: 1000                                     #自定义的端口
   type: tuic
-  uuid: a806923b-737c-4581-8b13-56666f911866       #自定义的uuid
-  password: a806923b-737c-4581-8b13-56666f911866   #自定义的密码
+  uuid: e9f2d1ba-cfa8-4bfc-b832-386e2ec8a98b       #自定义的uuid
+  password: e9f2d1ba-cfa8-4bfc-b832-386e2ec8a98b   #自定义的密码
   alpn: [h3]
   disable-sni: true
   reduce-rtt: true
   udp-relay-mode: native
   congestion-controller: bbr
-  sni: yg.ygkkk.eu.org                            #sni域名，与上面server地址一致     
-  skip-cert-verify: false
+  sni: www.bing.com                            #sni域名，与上面server地址一致     
+  skip-cert-verify: true
 
 
 #==============================（tuic-V5自签节点）
-- name: tuic-V5自签节点                              #可自定义名称
-  server: 1.2.3.4                                   #服务器本地IP
-  port: 12345                                       #自定义的端口
+- name: tuic-sg                              #可自定义名称
+  server: 2403:cfc0:1114:a2:e1::e74a                                   #服务器本地IP
+  port: 1152                                      #自定义的端口
   type: tuic
-  uuid: a806923b-737c-4581-8b13-56666f911866       #自定义的uuid
-  password: a806923b-737c-4581-8b13-56666f911866   #自定义的密码
+  uuid:  019513dc-7a90-4c36-9e27-4a2145fb5cb5       #自定义的uuid
+  password:  019513dc-7a90-4c36-9e27-4a2145fb5cb5   #自定义的密码
   alpn: [h3]
   disable-sni: true
   reduce-rtt: true
@@ -117,20 +76,6 @@ dns:
   sni: www.bing.com                                 #自签证书   
   skip-cert-verify: true
   
-
-#==============================（warp-wireguard节点）  
-- name: warp-wireguard节点                                   #可自定义名称
-  type: wireguard         
-  server: 162.159.193.10                                     #可自定义优选对端IP，与下面port的端口相对应
-  port: 2408                                                 #可自定义优选对端IP，与上面server的IP相对应
-  ip: 172.16.0.2
-  ipv6: 2606:4700:190:814e:7de3:5ddb:9d3e:9359               #与private-key相对应，如删除本行，表示仅IPV4
-  public-key: bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=
-  private-key: gK3C8ijdVlT7sd5fsdf5ssdfgsdfgsdfgobT2U+rgHo=  #获取private-key，私key
-  udp: true
-
-
-
 #（三区）==============================（代理分流）
 #分流组可自行创建添加，proxies参数下的name节点名称，按需求自行增减，确保出现的name节点名称在二区代理协议中可查找
 proxy-groups:
@@ -140,9 +85,9 @@ proxy-groups:
   interval: 300
   strategy: round-robin
   proxies:
-    - warp-wireguard节点                                  #自定义添加协议的name字段
-    - vless-ws-tls节点
-    - vless-ws节点
+    - hysteria2-sg                                  #自定义添加协议的name字段
+    - tuic-jp
+    - tuic-sg
 
 - name: 自动选择
   type: url-test
@@ -150,8 +95,9 @@ proxy-groups:
   interval: 300
   tolerance: 50
   proxies:
-    - vless-reality-vision节点                            #自定义添加协议的name字段
-    - vless-reality-grpc节点
+    - hysteria2-sg                                  #自定义添加协议的name字段
+    - tuic-jp
+    - tuic-sg
     
 - name: 🌍选择代理节点
   type: select
@@ -159,21 +105,9 @@ proxy-groups:
     - 负载均衡                                            #自定义添加协议的name字段
     - 自动选择
     - DIRECT
-    - vless-reality-vision节点                                    
-    - vless-reality-grpc节点
-    - vless-xtls-rprx-vision节点
-    - vless-ws-tls节点
-    - vless-ws节点
-    - vmess-ws-tls节点
-    - vmess-ws节点
-    - trojan-tcp-tls节点
-    - hysteria1证书节点
-    - hysteria1自签节点
-    - hysteria2证书节点
-    - hysteria2自签节点
-    - tuic-V5证书节点
-    - tuic-V5自签节点 
-    - warp-wireguard节点
+    - hysteria2-sg                                  #自定义添加协议的name字段
+    - tuic-jp
+    - tuic-sg
 
 
 #（四区）==============================（代理规则）
