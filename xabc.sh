@@ -61,7 +61,7 @@ cat >/usr/local/etc/xray/config.json<<EOF
                 "security": "reality",
                 "realitySettings": {
                     "show": false,
-                    "dest": "sr.ht:443",
+                    "target": "sr.ht:443",
                     "xver": 0,
                     "serverNames": [
                         "sr.ht",
@@ -73,7 +73,8 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     "maxTimeDiff": 0,
                     "shortIds": [
                         "88",
-                        "123abc"
+                        "123abc",
+                        ""
                     ]
                 }
             }
