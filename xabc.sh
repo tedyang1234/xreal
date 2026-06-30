@@ -33,7 +33,7 @@ install_xray(){
         yum install -y epel-release
         yum install -y gawk curl
     fi
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install --version 1.8.3
+    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 }
 
 reconfig(){
@@ -57,16 +57,15 @@ cat >/usr/local/etc/xray/config.json<<EOF
                 "decryption": "none"
             },
             "streamSettings": {
-                "network": "tcp",
+                "network": "raw",
                 "security": "reality",
                 "realitySettings": {
                     "show": false,
-                    "dest": "www.amazon.com:443",
+                    "dest": "sr.ht:443",
                     "xver": 0,
                     "serverNames": [
-                        "www.amazon.com",
+                        "sr.ht",
                         "addons.mozilla.org",
-                        "www.tesla.com"
                     ],
                     "privateKey": "$rePrivateKey",
                     "minClientVer": "",
@@ -152,7 +151,7 @@ UUID：${v2uuid}
 传输协议：tcp
 Public key：${rePublicKey}
 底层传输：reality
-SNI: www.amazon.com
+SNI: sr.ht
 shortIds: 88
 ====================================
 vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.amazon.com&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
@@ -176,7 +175,7 @@ client_re(){
     echo "传输协议：tcp"
     echo "Public key：${rePublicKey}"
     echo "底层传输：reality"
-    echo "SNI: www.amazon.com"
+    echo "SNI: sr.ht"
     echo "shortIds: 88"
     echo "===================================="
     echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.amazon.com&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
