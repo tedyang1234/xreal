@@ -65,7 +65,7 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     "xver": 0,
                     "serverNames": [
                         "sr.ht",
-                        "addons.mozilla.org",
+                        "addons.mozilla.org"
                     ],
                     "privateKey": "$rePrivateKey",
                     "minClientVer": "",
@@ -77,52 +77,7 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     ]
                 }
             }
-        },
-        {
-        "protocol": "shadowsocks",
-        "port": 4567,
-        "settings": {
-            "method": "aes-128-gcm",
-            "password": "uuuiii333",
-            "level": 1
         }
-    },
-    {
-            "port":8080,
-            "protocol":"socks",
-            "settings":{
-                "auth":"password",
-                "accounts":[
-                    {
-                        "user": "321",        
-                        "pass": "123"   
-                    }
-                ],
-		"udp": false,
-		"ip": "127.0.0.1"
-            }
-    },
-    {
-      "port": 2052,
-      "protocol": "vmess",
-      "settings": {
-        "udp": false,
-        "clients": [
-          {
-            "id": "aa0754aa-f63a-40fd-860c-7b81ca2ee399",
-            "alterId": 0,
-            "email": "t@t.tt"
-          }
-        ],
-        "allowTransparent": false
-      },
-      "streamSettings": {
-        "network": "ws",
-        "wsSettings": {
-          "path": "/?ed=2048"
-        }
-      }
-    }
     ],
     "outbounds": [
         {
@@ -140,23 +95,20 @@ EOF
     systemctl enable xray.service && systemctl restart xray.service
     rm -f tcp-wss.sh install-release.sh reality.sh
 
-cat >/usr/local/etc/xray/reclient.json<<EOF
-{
+cat >/usr/local/etc/xray/reclient.txt<<EOF
 ===========配置参数=============
 代理模式：vless
 地址：$(getIP)
 端口：${getPort}
 UUID：${v2uuid}
 流控：xtls-rprx-vision
-传输协议：tcp
+传输协议：raw（reality）
 Public key：${rePublicKey}
 底层传输：reality
 SNI: sr.ht
 shortIds: 88
 ====================================
-vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.amazon.com&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
-
-}
+vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
 EOF
 
     clear
@@ -172,13 +124,15 @@ client_re(){
     echo "端口：${getPort}"
     echo "UUID：${v2uuid}"
     echo "流控：xtls-rprx-vision"
-    echo "传输协议：tcp"
+    echo "传输协议：raw（reality）"
     echo "Public key：${rePublicKey}"
     echo "底层传输：reality"
     echo "SNI: sr.ht"
     echo "shortIds: 88"
     echo "===================================="
-    echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.amazon.com&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
+    echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
+    echo
+    echo "※ 配置文件已保存至：/usr/local/etc/xray/reclient.txt"
     echo
 }
 
