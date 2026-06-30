@@ -9,10 +9,25 @@ fi
 
 timedatectl set-timezone Asia/Shanghai
 v2uuid=$(cat /proc/sys/kernel/random/uuid)
+hy2pass=$(cat /proc/sys/kernel/random/uuid | cut -d'-' -f1)
+tuicpass=$(cat /proc/sys/kernel/random/uuid | cut -d'-' -f1)
 
+# ============ REALITY 端口 ============
 read -t 15 -p "回车或等待15秒为默认端口443，或者自定义端口请输入(1-65535)："  getPort
 if [ -z $getPort ];then
     getPort=443
+fi
+
+# ============ TUIC 端口 ============
+read -t 15 -p "回车或等待15秒为默认端口34567，或者自定义TUIC端口请输入(1-65535)："  tuicPort
+if [ -z $tuicPort ];then
+    tuicPort=34567
+fi
+
+# ============ Hysteria2 端口 ============
+read -t 15 -p "回车或等待15秒为默认端口45678，或者自定义Hysteria2端口请输入(1-65535)："  hy2Port
+if [ -z $hy2Port ];then
+    hy2Port=45678
 fi
 
 getIP(){
@@ -78,6 +93,29 @@ cat >/usr/local/etc/xray/config.json<<EOF
                     ]
                 }
             }
+        },
+        {
+            "port": $tuicPort,
+            "protocol": "tuic",
+            "settings": {
+                "auth": {
+                    "password": "$tuicpass"
+                },
+                "congestion_control": "bbr",
+                "udp_relay_mode": "native",
+                "zero_rtt_handshake": false
+            }
+        },
+        {
+            "port": $hy2Port,
+            "protocol": "hysteria2",
+            "settings": {
+                "auth": {
+                    "password": "$hy2pass"
+                },
+                "up_mbps": 0,
+                "down_mbps": 0
+            }
         }
     ],
     "outbounds": [
@@ -110,6 +148,26 @@ SNI: sr.ht
 shortIds: 88
 ====================================
 vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
+
+====================================
+===========TUIC 配置参数============
+地址：$(getIP)
+端口：${tuicPort}
+密码：${tuicpass}
+拥塞控制：bbr
+UDP中继：native
+====================================
+tuic://$(getIP):${tuicPort}?password=${tuicpass}&congestion_control=bbr&udp_relay_mode=native&zero_rtt_handshake=false#1024-tuic
+
+====================================
+=========Hysteria2 配置参数=========
+地址：$(getIP)
+端口：${hy2Port}
+密码：${hy2pass}
+上行限速：0（不限制）
+下行限速：0（不限制）
+====================================
+hy2://${hy2pass}@$(getIP):${hy2Port}?insecure=0&mport=${hy2Port}#1024-hy2
 EOF
 
     clear
@@ -132,6 +190,24 @@ client_re(){
     echo "shortIds: 88"
     echo "===================================="
     echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
+    echo
+    echo "===========TUIC 配置参数============"
+    echo "地址：$(getIP)"
+    echo "端口：${tuicPort}"
+    echo "密码：${tuicpass}"
+    echo "拥塞控制：bbr"
+    echo "UDP中继：native"
+    echo "===================================="
+    echo "tuic://$(getIP):${tuicPort}?password=${tuicpass}&congestion_control=bbr&udp_relay_mode=native&zero_rtt_handshake=false#1024-tuic"
+    echo
+    echo "=========Hysteria2 配置参数========="
+    echo "地址：$(getIP)"
+    echo "端口：${hy2Port}"
+    echo "密码：${hy2pass}"
+    echo "上行限速：0（不限制）"
+    echo "下行限速：0（不限制）"
+    echo "===================================="
+    echo "hy2://${hy2pass}@$(getIP):${hy2Port}?insecure=0&mport=${hy2Port}#1024-hy2"
     echo
     echo "※ 配置文件已保存至：/usr/local/etc/xray/reclient.txt"
     echo
