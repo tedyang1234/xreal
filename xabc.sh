@@ -1,218 +1,475 @@
-#!/bin/sh
-# forum: https://1024.day
+#!/bin/bash
 
-if [[ $EUID -ne 0 ]]; then
-    clear
-    echo "Error: This script must be run as root!" 1>&2
-    exit 1
-fi
+author=233boy
+# github=https://github.com/233boy/sing-box
 
-timedatectl set-timezone Asia/Shanghai
-v2uuid=$(cat /proc/sys/kernel/random/uuid)
-hy2pass=$(cat /proc/sys/kernel/random/uuid | cut -d'-' -f1)
-tuicpass=$(cat /proc/sys/kernel/random/uuid | cut -d'-' -f1)
+# bash fonts colors
+red='\e[31m'
+yellow='\e[33m'
+gray='\e[90m'
+green='\e[92m'
+blue='\e[94m'
+magenta='\e[95m'
+cyan='\e[96m'
+none='\e[0m'
+_red() { echo -e ${red}$@${none}; }
+_blue() { echo -e ${blue}$@${none}; }
+_cyan() { echo -e ${cyan}$@${none}; }
+_green() { echo -e ${green}$@${none}; }
+_yellow() { echo -e ${yellow}$@${none}; }
+_magenta() { echo -e ${magenta}$@${none}; }
+_red_bg() { echo -e "\e[41m$@${none}"; }
 
-# ============ REALITY 端口 ============
-read -t 15 -p "回车或等待15秒为默认端口443，或者自定义端口请输入(1-65535)："  getPort
-if [ -z $getPort ];then
-    getPort=443
-fi
+is_err=$(_red_bg 错误!)
+is_warn=$(_red_bg 警告!)
 
-# ============ TUIC 端口 ============
-read -t 15 -p "回车或等待15秒为默认端口34567，或者自定义TUIC端口请输入(1-65535)："  tuicPort
-if [ -z $tuicPort ];then
-    tuicPort=34567
-fi
-
-# ============ Hysteria2 端口 ============
-read -t 15 -p "回车或等待15秒为默认端口45678，或者自定义Hysteria2端口请输入(1-65535)："  hy2Port
-if [ -z $hy2Port ];then
-    hy2Port=45678
-fi
-
-getIP(){
-    local serverIP=
-    serverIP=$(curl -s -4 http://www.cloudflare.com/cdn-cgi/trace | grep "ip" | awk -F "[=]" '{print $2}')
-    if [[ -z "${serverIP}" ]]; then
-        serverIP=$(curl -s -6 http://www.cloudflare.com/cdn-cgi/trace | grep "ip" | awk -F "[=]" '{print $2}')
-    fi
-    echo "${serverIP}"
+err() {
+    echo -e "\n$is_err $@\n" && exit 1
 }
 
-install_xray(){ 
-    if [ -f "/usr/bin/apt-get" ]; then
-        apt-get update -y
-        apt-get install -y gawk curl
+warn() {
+    echo -e "\n$is_warn $@\n"
+}
+
+# root
+[[ $EUID != 0 ]] && err "当前非 ${yellow}ROOT用户.${none}"
+
+# apt-get, yum, zypper or apk
+cmd=$(type -P apt-get || type -P yum || type -P zypper || type -P apk)
+[[ ! $cmd ]] && err "此脚本仅支持 ${yellow}(Ubuntu or Debian or CentOS or SUSE or Alpine)${none}."
+
+# systemd or openrc
+is_systemd=$(type -P systemctl)
+is_openrc=$(type -P rc-service)
+[[ ! $is_systemd && ! $is_openrc ]] && {
+    err "此系统缺少 ${yellow}(systemctl 或 rc-service)${none}, 请安装 systemd 或确认 OpenRC 已启用."
+}
+
+# wget installed or none
+is_wget=$(type -P wget)
+
+# x64
+case $(uname -m) in
+amd64 | x86_64)
+    is_arch=amd64
+    ;;
+*aarch64* | *armv8*)
+    is_arch=arm64
+    ;;
+*)
+    err "此脚本仅支持 64 位系统..."
+    ;;
+esac
+
+is_core=sing-box
+is_core_name=sing-box
+is_core_dir=/etc/$is_core
+is_core_bin=$is_core_dir/bin/$is_core
+is_core_repo=SagerNet/$is_core
+is_conf_dir=$is_core_dir/conf
+is_log_dir=/var/log/$is_core
+is_sh_bin=/usr/local/bin/$is_core
+is_sh_dir=$is_core_dir/sh
+is_sh_repo=$author/$is_core
+is_pkg="wget tar bash"
+# Alpine: gcompat provides glibc compatibility for prebuilt binaries
+[[ $cmd =~ apk ]] && is_pkg="$is_pkg gcompat jq"
+is_config_json=$is_core_dir/config.json
+tmp_var_lists=(
+    tmpcore
+    tmpsh
+    tmpjq
+    is_core_ok
+    is_sh_ok
+    is_jq_ok
+    is_pkg_ok
+)
+
+# tmp dir
+tmpdir=$(mktemp -u)
+[[ ! $tmpdir ]] && {
+    tmpdir=/tmp/tmp-$RANDOM
+}
+
+# set up var
+for i in ${tmp_var_lists[*]}; do
+    export $i=$tmpdir/$i
+done
+
+# load bash script.
+load() {
+    . $is_sh_dir/src/$1
+}
+
+# wget add --no-check-certificate
+_wget() {
+    [[ $proxy ]] && export https_proxy=$proxy
+    wget --no-check-certificate $*
+}
+
+# print a mesage
+msg() {
+    case $1 in
+    warn)
+        local color=$yellow
+        ;;
+    err)
+        local color=$red
+        ;;
+    ok)
+        local color=$green
+        ;;
+    esac
+
+    echo -e "${color}$(date +'%T')${none}) ${2}"
+}
+
+# show help msg
+show_help() {
+    echo -e "Usage: $0 [-f xxx | -l | -p xxx | -v xxx | -h]"
+    echo -e "  -f, --core-file <path>          自定义 $is_core_name 文件路径, e.g., -f /root/$is_core-linux-amd64.tar.gz"
+    echo -e "  -l, --local-install             本地获取安装脚本, 使用当前目录"
+    echo -e "  -p, --proxy <addr>              使用代理下载, e.g., -p http://127.0.0.1:2333"
+    echo -e "  -v, --core-version <ver>        自定义 $is_core_name 版本, e.g., -v v1.8.13"
+    echo -e "  -h, --help                      显示此帮助界面\n"
+
+    exit 0
+}
+
+# install dependent pkg
+install_pkg() {
+    cmd_not_found=
+    for i in $*; do
+        [[ ! $(type -P $i) ]] && cmd_not_found="$cmd_not_found,$i"
+    done
+    if [[ $cmd_not_found ]]; then
+        pkg=$(echo $cmd_not_found | sed 's/,/ /g')
+        msg warn "安装依赖包 >${pkg}"
+        if [[ $cmd =~ apk ]]; then
+            apk update &>/dev/null
+            apk add $pkg &>/dev/null
+        else
+            $cmd install -y $pkg &>/dev/null
+            if [[ $? != 0 ]]; then
+                [[ $cmd =~ yum ]] && yum install epel-release -y &>/dev/null
+                if [[ $cmd =~ zypper ]]; then
+                    $cmd --non-interactive refresh &>/dev/null
+                else
+                    $cmd update -y &>/dev/null
+                fi
+                $cmd install -y $pkg &>/dev/null
+            fi
+        fi
+        [[ $? == 0 ]] && >$is_pkg_ok
     else
-        yum update -y
-        yum install -y epel-release
-        yum install -y gawk curl
+        >$is_pkg_ok
     fi
-    bash -c "$(curl -L https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install
 }
 
-reconfig(){
-    reX25519Key=$(/usr/local/bin/xray x25519)
-    rePrivateKey=$(echo "${reX25519Key}" | head -1 | awk '{print $3}')
-    rePublicKey=$(echo "${reX25519Key}" | tail -n 1 | awk '{print $3}')
+# download file
+download() {
+    case $1 in
+    core)
+        [[ ! $is_core_ver ]] && is_core_ver=$(_wget -qO- "https://api.github.com/repos/${is_core_repo}/releases/latest?v=$RANDOM" | grep tag_name | grep -E -o 'v([0-9.]+)')
+        [[ $is_core_ver ]] && link="https://github.com/${is_core_repo}/releases/download/${is_core_ver}/${is_core}-${is_core_ver:1}-linux-${is_arch}.tar.gz"
+        name=$is_core_name
+        tmpfile=$tmpcore
+        is_ok=$is_core_ok
+        ;;
+    sh)
+        link=https://github.com/${is_sh_repo}/releases/latest/download/code.tar.gz
+        name="$is_core_name 脚本"
+        tmpfile=$tmpsh
+        is_ok=$is_sh_ok
+        ;;
+    jq)
+        link=https://github.com/jqlang/jq/releases/download/jq-1.7.1/jq-linux-$is_arch
+        name="jq"
+        tmpfile=$tmpjq
+        is_ok=$is_jq_ok
+        ;;
+    esac
 
-cat >/usr/local/etc/xray/config.json<<EOF
-{
-    "inbounds": [
-        {
-            "port": $getPort,
-            "protocol": "vless",
-            "settings": {
-                "clients": [
-                    {
-                        "id": "$v2uuid",
-                        "flow": "xtls-rprx-vision"
-                    }
-                ],
-                "decryption": "none"
-            },
-            "streamSettings": {
-                "network": "raw",
-                "security": "reality",
-                "realitySettings": {
-                    "show": false,
-                    "target": "sr.ht:443",
-                    "xver": 0,
-                    "serverNames": [
-                        "sr.ht",
-                        "addons.mozilla.org"
-                    ],
-                    "privateKey": "$rePrivateKey",
-                    "minClientVer": "",
-                    "maxClientVer": "",
-                    "maxTimeDiff": 0,
-                    "shortIds": [
-                        "88",
-                        "123abc",
-                        ""
-                    ]
-                }
-            }
-        },
-        {
-            "port": $tuicPort,
-            "protocol": "tuic",
-            "settings": {
-                "auth": {
-                    "password": "$tuicpass"
-                },
-                "congestion_control": "bbr",
-                "udp_relay_mode": "native",
-                "zero_rtt_handshake": false
-            }
-        },
-        {
-            "port": $hy2Port,
-            "protocol": "hysteria2",
-            "settings": {
-                "auth": {
-                    "password": "$hy2pass"
-                },
-                "up_mbps": 0,
-                "down_mbps": 0
-            }
-        }
-    ],
-    "outbounds": [
-        {
-            "protocol": "freedom",
-            "tag": "direct"
-        },
-        {
-            "protocol": "blackhole",
-            "tag": "blocked"
-        }
-    ]    
+    [[ $link ]] && {
+        msg warn "下载 ${name} > ${link}"
+        if _wget -t 3 -q -c $link -O $tmpfile; then
+            mv -f $tmpfile $is_ok
+        fi
+    }
 }
-EOF
 
-    systemctl enable xray.service && systemctl restart xray.service
-    rm -f tcp-wss.sh install-release.sh reality.sh
+# get server ip
+get_ip() {
+    export "$(_wget -4 -qO- https://one.one.one.one/cdn-cgi/trace | grep ip=)" &>/dev/null
+    [[ -z $ip ]] && export "$(_wget -6 -qO- https://one.one.one.one/cdn-cgi/trace | grep ip=)" &>/dev/null
+}
 
-cat >/usr/local/etc/xray/reclient.txt<<EOF
-===========配置参数=============
-代理模式：vless
-地址：$(getIP)
-端口：${getPort}
-UUID：${v2uuid}
-流控：xtls-rprx-vision
-传输协议：raw（reality）
-Public key：${rePublicKey}
-底层传输：reality
-SNI: sr.ht
-shortIds: 88
-====================================
-vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality
+# check background tasks status
+check_status() {
+    # dependent pkg install fail
+    [[ ! -f $is_pkg_ok ]] && {
+        msg err "安装依赖包失败"
+        if [[ $cmd =~ apk ]]; then
+            msg err "请尝试手动安装依赖包: apk update; apk add $is_pkg"
+        else
+            msg err "请尝试手动安装依赖包: $cmd update -y; $cmd install -y $is_pkg"
+        fi
+        is_fail=1
+    }
 
-====================================
-===========TUIC 配置参数============
-地址：$(getIP)
-端口：${tuicPort}
-密码：${tuicpass}
-拥塞控制：bbr
-UDP中继：native
-====================================
-tuic://$(getIP):${tuicPort}?password=${tuicpass}&congestion_control=bbr&udp_relay_mode=native&zero_rtt_handshake=false#1024-tuic
+    # download file status
+    if [[ $is_wget ]]; then
+        [[ ! -f $is_core_ok ]] && {
+            msg err "下载 ${is_core_name} 失败"
+            is_fail=1
+        }
+        [[ ! -f $is_sh_ok ]] && {
+            msg err "下载 ${is_core_name} 脚本失败"
+            is_fail=1
+        }
+        [[ ! -f $is_jq_ok ]] && {
+            msg err "下载 jq 失败"
+            is_fail=1
+        }
+    else
+        [[ ! $is_fail ]] && {
+            is_wget=1
+            [[ ! $is_core_file ]] && download core &
+            [[ ! $local_install ]] && download sh &
+            [[ $jq_not_found ]] && download jq &
+            get_ip
+            wait
+            check_status
+        }
+    fi
 
-====================================
-=========Hysteria2 配置参数=========
-地址：$(getIP)
-端口：${hy2Port}
-密码：${hy2pass}
-上行限速：0（不限制）
-下行限速：0（不限制）
-====================================
-hy2://${hy2pass}@$(getIP):${hy2Port}?insecure=0&mport=${hy2Port}#1024-hy2
-EOF
+    # found fail status, remove tmp dir and exit.
+    [[ $is_fail ]] && {
+        exit_and_del_tmpdir
+    }
+}
 
+# parameters check
+pass_args() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+        -f | --core-file)
+            [[ -z $2 ]] && {
+                err "($1) 缺少必需参数, 正确使用示例: [$1 /root/$is_core-linux-amd64.tar.gz]"
+            } || [[ ! -f $2 ]] && {
+                err "($2) 不是一个常规的文件."
+            }
+            is_core_file=$2
+            shift 2
+            ;;
+        -l | --local-install)
+            [[ ! -f ${PWD}/src/core.sh || ! -f ${PWD}/$is_core.sh ]] && {
+                err "当前目录 (${PWD}) 非完整的脚本目录."
+            }
+            local_install=1
+            shift 1
+            ;;
+        -p | --proxy)
+            [[ -z $2 ]] && {
+                err "($1) 缺少必需参数, 正确使用示例: [$1 http://127.0.0.1:2333 or -p socks5://127.0.0.1:2333]"
+            }
+            proxy=$2
+            shift 2
+            ;;
+        -v | --core-version)
+            [[ -z $2 ]] && {
+                err "($1) 缺少必需参数, 正确使用示例: [$1 v1.8.13]"
+            }
+            is_core_ver=v${2//v/}
+            shift 2
+            ;;
+        -h | --help)
+            show_help
+            ;;
+        *)
+            echo -e "\n${is_err} ($@) 为未知参数...\n"
+            show_help
+            ;;
+        esac
+    done
+    [[ $is_core_ver && $is_core_file ]] && {
+        err "无法同时自定义 ${is_core_name} 版本和 ${is_core_name} 文件."
+    }
+}
+
+# exit and remove tmpdir
+exit_and_del_tmpdir() {
+    rm -rf $tmpdir
+    [[ ! $1 ]] && {
+        msg err "哦豁.."
+        msg err "安装过程出现错误..."
+        echo -e "反馈问题) https://github.com/${is_sh_repo}/issues"
+        echo
+        exit 1
+    }
+    exit
+}
+
+# main
+main() {
+
+    # check old version
+    [[ -f $is_sh_bin && -d $is_core_dir/bin && -d $is_sh_dir && -d $is_conf_dir ]] && {
+        err "检测到脚本已安装, 如需重装请使用${green} ${is_core} reinstall ${none}命令."
+    }
+
+    # check parameters
+    [[ $# -gt 0 ]] && pass_args $@
+
+    # show welcome msg
     clear
+    echo
+    echo "........... $is_core_name script by $author .........."
+    echo
+
+    # start installing...
+    msg warn "开始安装..."
+    [[ $is_core_ver ]] && msg warn "${is_core_name} 版本: ${yellow}$is_core_ver${none}"
+    [[ $proxy ]] && msg warn "使用代理: ${yellow}$proxy${none}"
+    # create tmpdir
+    mkdir -p $tmpdir
+    # if is_core_file, copy file
+    [[ $is_core_file ]] && {
+        cp -f $is_core_file $is_core_ok
+        msg warn "${yellow}${is_core_name} 文件使用 > $is_core_file${none}"
+    }
+    # local dir install sh script
+    [[ $local_install ]] && {
+        >$is_sh_ok
+        msg warn "${yellow}本地获取安装脚本 > $PWD ${none}"
+    }
+
+    if [[ $is_systemd ]]; then
+        timedatectl set-ntp true &>/dev/null
+        [[ $? != 0 ]] && {
+            is_ntp_on=1
+        }
+    fi
+
+    # install dependent pkg
+    if [[ $cmd =~ apk ]]; then
+        # Alpine: force install full versions to replace BusyBox applets
+        apk update &>/dev/null
+        apk add $is_pkg &>/dev/null
+        [[ $? == 0 ]] && >$is_pkg_ok
+    else
+        install_pkg $is_pkg &
+    fi
+
+    # jq
+    if [[ $(type -P jq) ]]; then
+        >$is_jq_ok
+    else
+        jq_not_found=1
+    fi
+    # if wget installed. download core, sh, jq, get ip
+    [[ $is_wget ]] && {
+        [[ ! $is_core_file ]] && download core &
+        [[ ! $local_install ]] && download sh &
+        [[ $jq_not_found ]] && download jq &
+        get_ip
+    }
+
+    # waiting for background tasks is done
+    wait
+
+    # check background tasks status
+    check_status
+
+    # test $is_core_file
+    if [[ $is_core_file ]]; then
+        mkdir -p $tmpdir/testzip
+        tar zxf $is_core_ok --strip-components 1 -C $tmpdir/testzip &>/dev/null
+        [[ $? != 0 ]] && {
+            msg err "${is_core_name} 文件无法通过测试."
+            exit_and_del_tmpdir
+        }
+        [[ ! -f $tmpdir/testzip/$is_core ]] && {
+            msg err "${is_core_name} 文件无法通过测试."
+            exit_and_del_tmpdir
+        }
+    fi
+
+    # get server ip.
+    [[ ! $ip ]] && {
+        msg err "获取服务器 IP 失败."
+        exit_and_del_tmpdir
+    }
+
+    # create sh dir...
+    mkdir -p $is_sh_dir
+
+    # copy sh file or unzip sh zip file.
+    if [[ $local_install ]]; then
+        cp -rf $PWD/* $is_sh_dir
+    else
+        tar zxf $is_sh_ok -C $is_sh_dir
+    fi
+
+    # ============================================================
+    # 🦞 PATCH: 自定义修改 - tad 定制版
+    # ============================================================
+    msg ok "应用 tad 定制补丁..."
+
+    # 1. Reality SNI 改为 sr.ht
+    sed -i 's/^is_random_servername=.*/is_random_servername=sr.ht/' $is_sh_dir/src/core.sh
+    msg ok "Reality SNI 已设为 sr.ht"
+
+    # 2. 所有节点名 233boy- → tad-
+    sed -i 's/233boy-/tad-/g' $is_sh_dir/src/core.sh
+    msg ok "节点命名已改为 tad-格式"
+    # ============================================================
+
+    # create core bin dir
+    mkdir -p $is_core_dir/bin
+    # copy core file or unzip core zip file
+    if [[ $is_core_file ]]; then
+        cp -rf $tmpdir/testzip/* $is_core_dir/bin
+    else
+        tar zxf $is_core_ok --strip-components 1 -C $is_core_dir/bin
+    fi
+
+    # add alias
+    echo "alias sb=$is_sh_bin" >>/root/.bashrc
+    echo "alias $is_core=$is_sh_bin" >>/root/.bashrc
+
+    # core command
+    ln -sf $is_sh_dir/$is_core.sh $is_sh_bin
+    ln -sf $is_sh_dir/$is_core.sh ${is_sh_bin/$is_core/sb}
+
+    # jq
+    [[ $jq_not_found ]] && mv -f $is_jq_ok /usr/bin/jq
+
+    # chmod
+    chmod +x $is_core_bin $is_sh_bin /usr/bin/jq ${is_sh_bin/$is_core/sb}
+
+    # create log dir
+    mkdir -p $is_log_dir
+
+    # show a tips msg
+    msg ok "生成配置文件..."
+
+    # create service
+    load systemd.sh
+    is_new_install=1
+    install_service $is_core &>/dev/null
+
+    # create condf dir
+    mkdir -p $is_conf_dir
+
+    load core.sh
+    # create a reality config
+    add reality
+    # wait for background tasks (e.g., OpenRC service start)
+    wait
+    # remove tmp dir and exit.
+    exit_and_del_tmpdir ok
 }
 
-client_re(){
-    echo
-    echo "安装已经完成"
-    echo
-    echo "===========reality配置参数============"
-    echo "代理模式：vless"
-    echo "地址：$(getIP)"
-    echo "端口：${getPort}"
-    echo "UUID：${v2uuid}"
-    echo "流控：xtls-rprx-vision"
-    echo "传输协议：raw（reality）"
-    echo "Public key：${rePublicKey}"
-    echo "底层传输：reality"
-    echo "SNI: sr.ht"
-    echo "shortIds: 88"
-    echo "===================================="
-    echo "vless://${v2uuid}@$(getIP):${getPort}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=sr.ht&fp=chrome&pbk=${rePublicKey}&sid=88&type=tcp&headerType=none#1024-reality"
-    echo
-    echo "===========TUIC 配置参数============"
-    echo "地址：$(getIP)"
-    echo "端口：${tuicPort}"
-    echo "密码：${tuicpass}"
-    echo "拥塞控制：bbr"
-    echo "UDP中继：native"
-    echo "===================================="
-    echo "tuic://$(getIP):${tuicPort}?password=${tuicpass}&congestion_control=bbr&udp_relay_mode=native&zero_rtt_handshake=false#1024-tuic"
-    echo
-    echo "=========Hysteria2 配置参数========="
-    echo "地址：$(getIP)"
-    echo "端口：${hy2Port}"
-    echo "密码：${hy2pass}"
-    echo "上行限速：0（不限制）"
-    echo "下行限速：0（不限制）"
-    echo "===================================="
-    echo "hy2://${hy2pass}@$(getIP):${hy2Port}?insecure=0&mport=${hy2Port}#1024-hy2"
-    echo
-    echo "※ 配置文件已保存至：/usr/local/etc/xray/reclient.txt"
-    echo
-}
-
-install_xray
-reconfig
-client_re
+# start.
+main $@
