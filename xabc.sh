@@ -71,7 +71,8 @@ is_log_dir=/var/log/$is_core
 is_sh_bin=/usr/local/bin/$is_core
 is_sh_dir=$is_core_dir/sh
 is_sh_repo=$author/$is_core
-is_pkg="wget tar bash"
+# ✅ 修复: 将 openssl 加入依赖包列表，解决 core.sh line 1423 openssl not found
+is_pkg="wget tar bash openssl"
 # Alpine: gcompat provides glibc compatibility for prebuilt binaries
 [[ $cmd =~ apk ]] && is_pkg="$is_pkg gcompat jq"
 is_config_json=$is_core_dir/config.json
@@ -412,17 +413,25 @@ main() {
     fi
 
     # ============================================================
-    # 🦞 PATCH: 自定义修改 - tad 定制版
+    # 🦞 PATCH: tad 定制版 (增强健壮性)
     # ============================================================
     msg ok "应用 tad 定制补丁..."
 
-    # 1. Reality SNI 改为 sr.ht
-    sed -i 's/^is_random_servername=.*/is_random_servername=sr.ht/' $is_sh_dir/src/core.sh
-    msg ok "Reality SNI 已设为 sr.ht"
+    # 1. Reality SNI 改为 sr.ht (带校验)
+    if grep -q '^is_random_servername=' "$is_sh_dir/src/core.sh"; then
+        sed -i 's/^is_random_servername=.*/is_random_servername=sr.ht/' "$is_sh_dir/src/core.sh"
+        msg ok "Reality SNI 已设为 sr.ht"
+    else
+        msg warn "未找到 is_random_servername 变量，SNI 补丁跳过（上游脚本结构可能已变更）"
+    fi
 
-    # 2. 所有节点名 233boy- → tad-
-    sed -i 's/233boy-/tad-/g' $is_sh_dir/src/core.sh
-    msg ok "节点命名已改为 tad-格式"
+    # 2. 所有节点名 233boy- → tad- (带校验)
+    if grep -q '233boy-' "$is_sh_dir/src/core.sh"; then
+        sed -i 's/233boy-/tad-/g' "$is_sh_dir/src/core.sh"
+        msg ok "节点命名已改为 tad- 格式"
+    else
+        msg warn "未找到 233boy- 标识，节点命名补丁跳过（可能已被修改或上游已变更）"
+    fi
     # ============================================================
 
     # create core bin dir
@@ -459,7 +468,7 @@ main() {
     is_new_install=1
     install_service $is_core &>/dev/null
 
-    # create condf dir
+    # create conf dir
     mkdir -p $is_conf_dir
 
     load core.sh
